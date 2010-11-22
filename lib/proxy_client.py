@@ -23,14 +23,22 @@ import logger, http_header, utils, ntlm_auth, basic_auth
 class proxy_HTTP_Client:
 
     #-----------------------------------------------------------------------
-    def __init__(self, client_socket, address, config):
-        ""     
+    def __init__(self, client_socket, address, config, locking_required, parent_lock=None, parent_lock_list=None):
+        # Defaults for function overrides:
+        self.connect_rserver = self.proxy_connect_rserver
+        self.fix_client_header = self.proxy_fix_client_header
+        self.check_connected_remote_server = self.proxy_check_connected_remote_server
+
+        self.locking_required = locking_required
+        self.parent_lock = parent_lock
+        self.parent_lock_list = parent_lock_list
         self.config = config
+
         self.ntlm_auther = ntlm_auth.ntlm_auther()
         # experimental code
         self.basic_auther = basic_auth.basic_auther()
         # experimental code end
-
+        self.mode_undecided = 1
         self.proxy_authorization_tried = 0
         self.www_authorization_tried = 0
         self.tunnel_mode = 0
@@ -81,7 +89,6 @@ class proxy_HTTP_Client:
     
     #-----------------------------------------------------------------------
     def run(self):
-        ""
         if self.config['DEBUG']['SCR_DEBUG']: print 'Connected from %s:%d' % self.client_address
 
         while(not self.stop_request):
@@ -168,8 +175,7 @@ class proxy_HTTP_Client:
         if self.config['DEBUG']['SCR_DEBUG']: print 'Finished %s:%d' % self.client_address
 
     #-----------------------------------------------------------------------
-    def fix_client_header(self):
-        ""
+    def proxy_fix_client_header(self):
         self.logger.log('*** Replacing values in client header...')
         if self.config.has_key('CLIENT_HEADER'):
             for i in self.config['CLIENT_HEADER'].keys():
@@ -182,7 +188,6 @@ class proxy_HTTP_Client:
 
     #-----------------------------------------------------------------------
     def run_rserver_loop(self):
-        ""
         try:
             res = select.select([self.rserver_socket.fileno()], [], [], 0.0)
         except (socket.error, ValueError):
@@ -227,7 +232,6 @@ class proxy_HTTP_Client:
 
     #-----------------------------------------------------------------------
     def run_client_loop(self):
-        ""
         try:
             res = select.select([self.client_socket.fileno()], [], [], 0.0)
         except (socket.error, select.error, ValueError):
@@ -256,6 +260,9 @@ class proxy_HTTP_Client:
             if self.client_head_obj:
                 self.logger.log("*** Got client request header.\n")
                 self.client_buffer = rest
+                if self.mode_undecided:
+                    self.determine_mode()
+                    self.mode_undecided = 0
                 self.logger.log('*** Client header:\n=====\n' + self.client_head_obj.__repr__())
                 self.guess_client_data_length()
 
@@ -266,7 +273,6 @@ class proxy_HTTP_Client:
 
     #-----------------------------------------------------------------------
     def send_rserver_header(self):
-        ""
         self.logger.log('*** Sending remote server response header to client...')
         ok = self.rserver_head_obj.send(self.client_socket)
         if ok:
@@ -279,7 +285,6 @@ class proxy_HTTP_Client:
 
     #-----------------------------------------------------------------------
     def send_rserver_data(self):
-        ""
         if self.rserver_buffer and (not self.rserver_data_sent):
             if self.rserver_data_length:
                 if self.rserver_all_got:
@@ -305,8 +310,7 @@ class proxy_HTTP_Client:
         else:
             self.logger.log("*** No server's data to send to the client. (server's buffer - %d bytes)\n" % len(self.rserver_buffer))
     #-----------------------------------------------------------------------
-    def send_client_header(self):
-        ""
+    def proxy_send_client_header(self):
         self.logger.log('*** Sending client request header to remote server...')
         ok = self.client_head_obj.send(self.rserver_socket)
         if ok:
@@ -318,7 +322,6 @@ class proxy_HTTP_Client:
 
     #-----------------------------------------------------------------------
     def send_client_data(self):
-        ""
         if self.client_buffer and (not self.client_data_sent):
             if self.client_data_length:
                 if self.client_all_got:
@@ -345,7 +348,6 @@ class proxy_HTTP_Client:
 
     #-----------------------------------------------------------------------
     def reset_rserver(self):
-        ""
         self.logger.log('*** Resetting remote server status...')
         self.rserver_head_obj = None
 
@@ -360,7 +362,6 @@ class proxy_HTTP_Client:
 
     #-----------------------------------------------------------------------
     def reset_client(self):
-        ""
         self.logger.log('*** Resetting client status...')
         self.client_head_obj = None
 
@@ -377,7 +378,6 @@ class proxy_HTTP_Client:
 
     #-----------------------------------------------------------------------
     def rollback_client_data(self):
-        ""
         # some activity for POST and PUT getting to work with authorization
         # part of data might be sent before we have got 407 error
         # so we have to get those data back
@@ -392,7 +392,6 @@ class proxy_HTTP_Client:
 
     #-----------------------------------------------------------------------
     def tunnel_rserver_data(self):
-        ""
         if self.rserver_buffer:
             data = self.rserver_buffer
             self.rserver_buffer = ''
@@ -405,7 +404,6 @@ class proxy_HTTP_Client:
 
     #-----------------------------------------------------------------------
     def tunnel_client_data(self):
-        ""
         if self.client_buffer:
             data = self.client_buffer
             self.client_buffer = ''
@@ -418,7 +416,6 @@ class proxy_HTTP_Client:
 
     #-----------------------------------------------------------------------
     def guess_rserver_data_length(self):
-        ""
         code = self.rserver_head_obj.get_http_code()
         try:
             c_method = self.client_head_obj.get_http_method()
@@ -455,7 +452,6 @@ class proxy_HTTP_Client:
 
     #-----------------------------------------------------------------------
     def guess_client_data_length(self):
-        ""
         if not self.client_head_obj.has_param('Content-Length') and not self.client_head_obj.has_param('Transfer-Encode'):
             self.client_all_got = 1
             self.client_data_sent = 1
@@ -475,21 +471,18 @@ class proxy_HTTP_Client:
 
     #-----------------------------------------------------------------------
     def check_rserver_data_length(self):
-        ""
         if self.rserver_data_length:
             if self.rserver_data_length <= (len(self.rserver_buffer) + self.rserver_current_data_pos):
                 self.rserver_all_got = 1
 
     #-----------------------------------------------------------------------
     def check_client_data_length(self):
-        ""
         if self.client_data_length:
             if self.client_data_length <= (len(self.client_buffer) + self.client_current_data_pos):
                 self.client_all_got = 1
 
     #-----------------------------------------------------------------------
     def check_tunnel_mode(self):
-        ""
         p_code = self.rserver_head_obj.get_http_code()
         c_request = self.client_head_obj.get_http_method()
         if c_request == 'CONNECT' and p_code == '200':
@@ -498,7 +491,6 @@ class proxy_HTTP_Client:
 
     #-----------------------------------------------------------------------
     def log_url(self):
-        ""
         if self.config['GENERAL']['URL_LOG']:
             t = time.strftime('%d.%m.%Y %H:%M:%S', time.localtime(time.time()))
             m = self.client_head_obj.get_http_method()
@@ -513,7 +505,6 @@ class proxy_HTTP_Client:
 
     #-----------------------------------------------------------------------
     def check_stop_request(self):
-        ""
         reason = ''
         if self.rserver_socket_closed and not self.first_run:
             self.stop_request = 1
@@ -541,7 +532,6 @@ class proxy_HTTP_Client:
 
     #-----------------------------------------------------------------------
     def exit(self):
-        ""
         self.logger.log('*** Finishing procedure started.\n')
         if self.rserver_socket_closed and self.rserver_buffer and (not self.client_socket_closed):
             self.logger.log('*** There are some data to be sent to client in the remote server buffer.\n')
@@ -562,8 +552,7 @@ class proxy_HTTP_Client:
         # thread.exit()
 
     #-------------------------------------------------
-    def connect_rserver(self):
-        ""
+    def proxy_connect_rserver(self):
         self.logger.log('*** Connecting to remote server...')
         self.first_run = 0
 
@@ -587,7 +576,6 @@ class proxy_HTTP_Client:
 
     #-------------------------------------------------
     def close_rserver(self):
-        ""
         self.logger.log('*** Closing connection to the remote server...')
         self.rserver_socket.close()
         self.rserver_socket_closed = 1
@@ -596,7 +584,6 @@ class proxy_HTTP_Client:
 
     #-------------------------------------------------
     def close_client(self):
-        ""
         self.logger.log('*** Closing connection to the client...')
         self.client_socket.close()
         self.client_socket_closed = 1
@@ -604,7 +591,6 @@ class proxy_HTTP_Client:
 
     #-----------------------------------------------------------------------
     def auth_407(self):
-        ""
         auth = self.rserver_head_obj.get_param_values('Proxy-Authenticate')
         upper_auth = []
         msg = ''
@@ -639,7 +625,6 @@ class proxy_HTTP_Client:
 
     #-----------------------------------------------------------------------
     def auth_401(self):
-        ""
         auth = self.rserver_head_obj.get_param_values('Www-Authenticate')
         upper_auth = []
         msg = ''
@@ -674,7 +659,6 @@ class proxy_HTTP_Client:
 
     #-----------------------------------------------------------------------
     def auth_routine(self):
-        ""
         self.logger.log('*** Authentication routine started.\n')
         code = self.rserver_head_obj.get_http_code()
 
@@ -693,7 +677,6 @@ class proxy_HTTP_Client:
 
     #-----------------------------------------------------------------------
     def check_rserver_response(self):
-        ""
         if self.rserver_header_sent == 1:
             code = self.rserver_head_obj.get_http_code()
             if  code == '100':
@@ -713,7 +696,161 @@ class proxy_HTTP_Client:
 
     #-----------------------------------------------------------------------
     # Need not for proxy module...
-    def check_connected_remote_server(self):
-        ""
+    def proxy_check_connected_remote_server(self):
         pass
+
+    #-----------------------------------------------------------------------
+    def www_connect_rserver(self):
+        self.logger.log('*** Connecting to remote server...')
+        self.first_run = 0
+
+        # we don't have proxy then we have to connect server by ourselves
+        rs, rsp = self.client_head_obj.get_http_server()
+
+        self.logger.log('(%s:%d)...' % (rs, rsp))
+
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.connect((rs, rsp))
+            self.rserver_socket = s
+            self.rserver_socket_closed = 0
+            self.current_rserver_net_location = '%s:%d' % (rs, rsp)
+            self.logger.log('Done.\n')
+        except:
+            self.rserver_socket_closed = 1
+            self.logger.log('Failed.\n')
+            self.exit()
+            thread.exit()
+        if self.client_head_obj.get_http_method() == 'CONNECT':
+            self.logger.log('*** Generating server HTTP response...')
+            buffer = 'HTTP/1.1 200 Connection established\015\012\015\012'
+            self.rserver_head_obj, rest = http_header.extract_server_header(buffer)
+            self.rserver_buffer = rest
+            self.guess_rserver_data_length()
+            self.logger.log('Done.\n')
+
+
+    #-----------------------------------------------------------------------
+    def www_fix_client_header(self):
+        self.logger.log('*** Replacing values in client header...')
+        if self.config.has_key('CLIENT_HEADER'):
+            for i in self.config['CLIENT_HEADER'].keys():
+                self.client_head_obj.del_param(i)
+                self.client_head_obj.add_param_value(i, self.config['CLIENT_HEADER'][i])
+            self.logger.log('Done.\n')
+            # self.logger.log('*** New client header:\n=====\n' + self.client_head_obj.__repr__())
+        else:
+            self.logger.log('No need.\n*** There is no "CLIENT_HEADER" section in server.cfg.\n')
+
+        self.logger.log("*** Working as selfcontained proxy, then have to change client header.\n")
+        self.logger.log("*** Remake url format in client header...")
+        self.client_head_obj.make_right_header()
+        self.logger.log('Done.\n')
+        self.client_head_obj.del_param('Keep-Alive')
+        self.logger.log("*** Just killed 'Keep-Alive' value in the header.\n")
+
+        # Code which converts 'Proxy-Connection' value to 'Connection'
+        # I am not sure that it is needed at all
+        # May be it is just useless activity
+        self.logger.log("*** Looking for 'Proxy-Connection' in client header...")
+        pconnection = self.client_head_obj.get_param_values('Proxy-Connection')
+        if pconnection:
+            # if we have 'Proxy-Connection'
+            self.logger.log("there are some.\n")
+            wconnection = self.client_head_obj.get_param_values('Connection')
+            if wconnection:
+                # if we have 'Connection' as well
+                self.logger.log("*** There is a 'Connection' value in the header.\n")
+                self.client_head_obj.del_param('Proxy-Connection')
+                self.logger.log("*** Just killed 'Proxy-Connection' value in the header.\n")
+            else:
+                self.logger.log("*** There is no 'Connection' value in the header.\n")
+                self.client_head_obj.del_param('Proxy-Connection')
+                for i in pconnection:
+                    self.client_head_obj.add_param_value('Connection', i)
+                self.logger.log("*** Changed 'Proxy-Connection' to 'Connection' header value.\n")
+
+        else:
+            self.logger.log("there aren't any.\n")
+
+        # End of doubtable code.
+
+        # Show reworked header.
+        self.logger.log('*** New client header:\n=====\n' + self.client_head_obj.__repr__())
+
+    #-----------------------------------------------------------------------
+    def www_send_client_header(self):
+        if self.client_head_obj.get_http_method() == 'CONNECT':
+            self.client_header_sent = 1
+        else:
+            self.logger.log('*** Sending client request header to remote server...')
+            ok = self.client_head_obj.send(self.rserver_socket)
+            if ok:
+                self.client_header_sent = 1
+                self.logger.log('Done.\n')
+            else:
+                self.rserver_socket_closed = 1
+                self.logger.log('Failed.\n')
+
+    #-----------------------------------------------------------------------
+    def www_check_connected_remote_server(self):
+        # if we are working as a standalone proxy server
+        rs, rsp = self.client_head_obj.get_http_server()
+        if self.current_rserver_net_location != '%s:%d' % (rs, rsp):
+            # if current connection is not we need then close it.
+            self.logger.log('*** We had wrong connection for new request so we have to close it.\n')
+            self.close_rserver()
+
+    #-----------------------------------------------------------------------
+    def determine_mode(self):
+        if self.config['GENERAL']['PARENT_PROXY']:
+            if self.config['GENERAL']['HOSTS_TO_BYPASS_PARENT_PROXY'] or self.config['GENERAL']['DIRECT_CONNECT_IF_POSSIBLE']:
+                try:
+                    if self.config['GENERAL']['PARENT_SKIP_FOR_INTERNAL'] and self.can_connect():
+                        self.move_to_www_mode()
+                    else:
+                        host = self.client_head_obj.get_param_values('Host')
+                        if host:
+                            if host[0] in self.config['GENERAL']['HOSTS_TO_BYPASS_PARENT_PROXY']:
+                                self.move_to_www_mode()
+                            else:
+                                self.move_to_proxy_mode()
+                except KeyError:
+                    self.move_to_proxy_mode()
+            else:
+                self.move_to_proxy_mode()
+        else:
+            self.move_to_www_mode()
+        return
+
+    #-----------------------------------------------------------------------
+    def can_connect(self):
+        try:
+            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            rs, rsp = self.client_head_obj.get_http_server()
+            s.connect((rs, rsp))
+            s.close()
+            return True
+        except:
+            return False
+
+    #-----------------------------------------------------------------------
+    def move_to_proxy_mode(self):
+        self.connect_rserver = self.proxy_connect_rserver
+        self.fix_client_header = self.proxy_fix_client_header
+        self.check_connected_remote_server = self.proxy_check_connected_remote_server
+        self.send_client_header = self.proxy_send_client_header
+        if self.locking_required:
+            self.parent_lock.acquire()
+            self.parent_lock_list.append(self)
+            self.parent_lock.release()
+        return
+
+    #-----------------------------------------------------------------------
+    def move_to_www_mode(self):
+        self.connect_rserver = self.www_connect_rserver
+        self.fix_client_header = self.www_fix_client_header
+        self.check_connected_remote_server = self.www_check_connected_remote_server
+        self.send_client_header = self.www_send_client_header
+        return
 

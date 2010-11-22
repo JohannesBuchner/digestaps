@@ -24,7 +24,6 @@ http_debug_file_name = 'http.debug'
 #-----------------------------------------------------------------------
 # tests client's header for correctness
 def test_client_http_header(header_str):
-    ""
     request = string.split(header_str, '\012')[0]
     parts = string.split(request)
 
@@ -39,7 +38,6 @@ def test_client_http_header(header_str):
 #-----------------------------------------------------------------------
 # tests server's response header for correctness
 def test_server_http_header(header_str):
-    ""
     response = string.split(header_str, '\012')[0]
     parts = string.split(response)
     
@@ -52,7 +50,6 @@ def test_server_http_header(header_str):
 
 #-----------------------------------------------------------------------
 def extract_http_header_str(buffer):
-    ""
     # let's remove possible leading newlines
     t = string.lstrip(buffer)
 
@@ -93,7 +90,6 @@ def extract_http_header_str(buffer):
 
 #-----------------------------------------------------------------------
 def extract_server_header(buffer):
-    ""
     header_str, rest_str = extract_http_header_str(buffer)
     if header_str:
         header_obj = HTTP_SERVER_HEAD(header_str)
@@ -104,7 +100,6 @@ def extract_server_header(buffer):
 
 #-----------------------------------------------------------------------
 def extract_client_header(buffer):
-    ""
     header_str, rest_str = extract_http_header_str(buffer)
     if header_str:
         header_obj = HTTP_CLIENT_HEAD(header_str)
@@ -115,7 +110,6 @@ def extract_client_header(buffer):
 
 #-----------------------------------------------------------------------
 def capitalize_value_name(str):
-    ""
     tl = string.split(str, '-')
     for i in range(len(tl)):
         tl[i] = string.capitalize(tl[i])
@@ -127,12 +121,10 @@ def capitalize_value_name(str):
 # some helper classes
 #-----------------------------------------------------------------------
 class HTTP_HEAD:
-    ""
     pass
 
     #-------------------------------
     def __init__(self, head_str):
-        ""
         self.head_source = ''
         self.params = None
         self.fields = None
@@ -173,7 +165,6 @@ class HTTP_HEAD:
 
     #-------------------------------
     def debug(self, message):
-        ""
         try:
             f = open(http_debug_file_name, 'a')
             f.write(message)
@@ -187,14 +178,12 @@ class HTTP_HEAD:
 
     #-------------------------------
     def copy(self):
-        ""
         import copy
         return copy.deepcopy(self)
 
 
     #-------------------------------
     def get_param_values(self, param_name):
-        ""
         param_name = string.lower(param_name)
         if self.params.has_key(param_name):
             return self.params[param_name]
@@ -203,19 +192,16 @@ class HTTP_HEAD:
 
     #-------------------------------
     def del_param(self, param_name):
-        ""
         param_name = string.lower(param_name)
         if self.params.has_key(param_name): del self.params[param_name]
 
     #-------------------------------
     def has_param(self, param_name):
-        ""
         param_name = string.lower(param_name)
         return self.params.has_key(param_name)
 
     #-------------------------------
     def add_param_value(self, param_name, value):
-        ""
         param_name = string.lower(param_name)
         if not self.params.has_key(param_name):
             self.params[param_name] = []
@@ -225,13 +211,11 @@ class HTTP_HEAD:
 
     #-------------------------------
     def replace_param_value(self, param_name, value):
-        ""
         self.del_param(param_name)
         self.add_param_value(param_name, value)
 
     #-------------------------------
     def __repr__(self, delimiter='\n'):
-        ""
         res = ''
         cookies = ''
         res = string.join(self.fields, ' ') + '\n'
@@ -251,7 +235,6 @@ class HTTP_HEAD:
 
     #-------------------------------
     def send(self, socket):
-        ""
         #"""
         res = ''
         cookies = ''
@@ -285,17 +268,14 @@ class HTTP_SERVER_HEAD(HTTP_HEAD):
 
     #-------------------------------
     def get_http_version(self):
-        ""
         return self.fields[0]
 
     #-------------------------------
     def get_http_code(self):
-        ""
         return self.fields[1]
 
     #-------------------------------
     def get_http_message(self):
-        ""
         return self.fields[2]
 
 #-----------------------------------------------------------------------
@@ -303,22 +283,18 @@ class HTTP_CLIENT_HEAD(HTTP_HEAD):
 
     #-------------------------------
     def get_http_version(self):
-        ""
         return self.fields[2]
 
     #-------------------------------
     def get_http_method(self):
-        ""
         return self.fields[0]
 
     #-------------------------------
     def get_http_url(self):
-        ""
         return self.fields[1]
 
     #-------------------------------
     def set_http_url(self, new_url):
-        ""
         self.fields[1] = new_url
 
     #-------------------------------
@@ -326,20 +302,26 @@ class HTTP_CLIENT_HEAD(HTTP_HEAD):
     # not all servers want to answer to requests with full url in request
     # but want have net location in 'Host' value and path in url.
     def make_right_header(self):
-        ""
-        url_tuple = urlparse.urlparse(self.get_http_url())
-        net_location = url_tuple[1]
+        if self.get_http_method() == 'CONNECT':
+            net_location = self.get_http_url()
+        else:
+            url_tuple = urlparse.urlparse(self.get_http_url())
+            net_location = url_tuple[1]
+
         self.replace_param_value('Host', net_location)
 
-        path = urlparse.urlunparse(tuple(['', ''] + list(url_tuple[2:])))
-        self.set_http_url(path)
+        if self.get_http_method() != 'CONNECT':
+            path = urlparse.urlunparse(tuple(['', ''] + list(url_tuple[2:])))
+            self.set_http_url(path)
 
     #-------------------------------
     def get_http_server(self):
-        ""
         # trying to get host from url
-        url_tuple = urlparse.urlparse(self.get_http_url())
-        net_location = url_tuple[1]
+        if self.get_http_method() == 'CONNECT':
+            net_location = self.get_http_url()
+        else:
+            url_tuple = urlparse.urlparse(self.get_http_url())
+            net_location = url_tuple[1]
 
         # if there was no host in url then get it from 'Host' value
         if not net_location:

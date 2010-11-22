@@ -30,7 +30,7 @@ import server, config, config_affairs
 # look for default config name in lib/config.py
 conf = config.read_config(config.findConfigFileNameInArgv(sys.argv, __init__.ntlmaps_dir+'/'))
 
-conf['GENERAL']['VERSION'] = '0.9.9.0.1'
+conf['GENERAL']['VERSION'] = '0.9.9.5'
 
 #--------------------------------------------------------------
 print 'NTLM authorization Proxy Server v%s' % conf['GENERAL']['VERSION']

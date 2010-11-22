@@ -18,7 +18,7 @@
 #
 
 import socket, thread, sys, signal, getpass
-import proxy_client, www_client, monitor_upstream, ntlm_procs
+import proxy_client, monitor_upstream, ntlm_procs
 
 #--------------------------------------------------------------
 class AuthProxyServer:
@@ -31,6 +31,7 @@ class AuthProxyServer:
         self.sigLock = thread.allocate_lock() # For locking in the sigHandler
         self.monLock = thread.allocate_lock() # For keeping the monitor thread sane
         self.watchUpstream = 0
+        self.monitor = None
         if not self.config['NTLM_AUTH']['NTLM_TO_BASIC']:
             if not self.config['NTLM_AUTH']['PASSWORD']:
                 tries = 3
@@ -58,6 +59,7 @@ class AuthProxyServer:
             thread.start_new_thread(self.monitor.run, ())
         try:
             s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             s.bind((self.MyHost, self.ListenPort))
         except socket.error:
             print "ERROR: Could not create socket. Possibly port %s is still being used by another process." % self.config['GENERAL']['LISTEN_PORT']
@@ -80,21 +82,10 @@ class AuthProxyServer:
 
     #--------------------------------------------------------------
     def client_run(self, conn, addr):
-        if self.config['GENERAL']['PARENT_PROXY']:
-            # working with MS Proxy
-            if self.watchUpstream:
-                # Locking here is really more of a 'nice to have';
-                # if performance suffers on heavy load we can trade
-                # drops here for drops on bad proxy later.
-                self.monLock.acquire()
-                c = proxy_client.proxy_HTTP_Client(conn, addr, self.config)
-                self.monitor.threadsToKill.append(c)
-                self.monLock.release()
-            else:
-                c = proxy_client.proxy_HTTP_Client(conn, addr, self.config)
+        if self.watchUpstream:
+            c = proxy_client.proxy_HTTP_Client(conn, addr, self.config, self.watchUpstream, self.monLock, self.monitor.threadsToKill)
         else:
-            # working with MS IIS and any other
-            c = www_client.www_HTTP_Client(conn, addr, self.config)
+            c = proxy_client.proxy_HTTP_Client(conn, addr, self.config, self.watchUpstream)
         thread.start_new_thread(c.run, ())
 
     #--------------------------------------------------------------

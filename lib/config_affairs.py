@@ -22,18 +22,19 @@ import logger
 
 #-------------------------------------------------------------------------
 def arrange(conf):
-    ""
 
     #-----------------------------------------------
     # GENERAL
     conf['GENERAL']['PARENT_PROXY']
 
-    # if we do not use proxy then we do not need its port
+    # If we do not use PARENT_PROXY then there are some items we just don't need:
     if conf['GENERAL']['PARENT_PROXY']:
         conf['GENERAL']['AVAILABLE_PROXY_LIST'] = string.split(conf['GENERAL']['PARENT_PROXY'])
         conf['GENERAL']['PARENT_PROXY'] = conf['GENERAL']['AVAILABLE_PROXY_LIST'].pop()
         conf['GENERAL']['PARENT_PROXY_PORT'] = makeInt(conf['GENERAL']['PARENT_PROXY_PORT'], 'PARENT_PROXY_PORT')
         conf['GENERAL']['PARENT_PROXY_TIMEOUT'] = makeInt(conf['GENERAL']['PARENT_PROXY_TIMEOUT'], 'PARENT_PROXY_TIMEOUT')
+        conf['GENERAL']['HOSTS_TO_BYPASS_PARENT_PROXY'] = string.split(conf['GENERAL']['HOSTS_TO_BYPASS_PARENT_PROXY'])
+        conf['GENERAL']['DIRECT_CONNECT_IF_POSSIBLE'] = makeInt(conf['GENERAL']['DIRECT_CONNECT_IF_POSSIBLE'], 'DIRECT_CONNECT_IF_POSSIBLE')
     try:
         conf['GENERAL']['MAX_CONNECTION_BACKLOG'] = int(conf['GENERAL']['MAX_CONNECTION_BACKLOG'])
     except ValueError:
@@ -49,13 +50,23 @@ def arrange(conf):
     conf['GENERAL']['HOST'] = hostname
     try:
         externalIP = socket.gethostbyname_ex(hostname)[2]
-    except socket.error: # socket.gaierror in Python 2.x
+    except (socket.error): #socket.gaierror in Python 2.x
         print "ERROR: Unable to get the IP address of this machine.  This is not a fatal problem, but may cause problems for you using this proxy in some scenarios."
         externalIP = []
     conf['GENERAL']['HOST_IP_LIST'] = externalIP + ['127.0.0.1']
 
     conf['GENERAL']['FRIENDLY_IPS'] = conf['GENERAL']['HOST_IP_LIST'] + string.split(conf['GENERAL']['FRIENDLY_IPS'])
 
+    # Idea contributed by Fernando M. Garcia Garcia:
+    saneList = []
+    for host in conf['GENERAL']['FRIENDLY_IPS']:
+        try:
+            saneList.append(socket.gethostbyname(host))    
+        except (socket.error): #socket.gaierror on Python 2.x
+            print "ERROR: Could not get IP address for %s in list of FRIENDLY_IPS" % host
+            sys.exit(1)
+    conf['GENERAL']['FRIENDLY_IPS'] = saneList
+            
     conf['GENERAL']['URL_LOG'] = makeInt(conf['GENERAL']['URL_LOG'], 'URL_LOG')
     url_logger = logger.Logger('url.log', conf['GENERAL']['URL_LOG'])
     url_logger_lock = thread.allocate_lock()

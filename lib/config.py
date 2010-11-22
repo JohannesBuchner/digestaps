@@ -17,30 +17,25 @@
 # 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
 #
 
-import string
-import getopt
+import string, getopt, os, sys
+
 #-------------------------------------------------------------------------------------------
 def read_config(fname):
-    ""
     res = {}
-    section_name = 'DEFAULT'
 
     buf = open(fname).readlines()
-    for i in range(len(buf)):
-        t = buf[i]
-        t = string.split(t, '#')[0]
-        t = string.strip(t)
-
-        if t:
-            if t[0] == '[' and t[-1] == ']':
-                section_name = string.strip(t[1:-1])
-                if section_name:
-                    res[section_name] = {}
-            else:
-                parts = string.split(t, ':')
-                if len(parts) > 1:
-                    res[section_name][string.strip(parts[0])] = string.strip(parts[1])
-
+    for line in buf:
+        workingLine = string.strip(line)
+        if workingLine:
+            if workingLine[0] != '#':
+                if workingLine[0] == '[' and workingLine[-1] == ']':
+                    section_name = string.strip(workingLine[1:-1])
+                    if section_name:
+                        res[section_name] = {}
+                else:
+                    parts = string.split(workingLine, ':')
+                    if len(parts) > 1:
+                        res[section_name][string.strip(parts[0])] = string.strip(parts[1])
     return res
 
 #-------------------------------------------------------------------------------------------
@@ -48,7 +43,7 @@ def read_config(fname):
 
 def findConfigFileNameInArgv(argv, configFileDir=''):
     """ Resolves configuration file. Resolution goes as follows:
-    if the command switch '-c' is given it's argument is taken as
+    if the command switch '-c' is given its argument is taken as
     the config file. Otherwise the function falls back to
     'server.cfg' in the current directory. """
 
@@ -59,7 +54,13 @@ def findConfigFileNameInArgv(argv, configFileDir=''):
     for i in optionsList:
         option, value = i
         if option == '-c' and value != '':
-            configFileName = value
-            break
+            try:
+                handle = open(value)
+                handle.close()
+                configFileName = value
+                break
+            except IOError:
+                print "ERROR: Config file specified with '-c' either does not exist or is not readable."
+                sys.exit(1)
 
     return configFileName

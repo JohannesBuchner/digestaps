@@ -1,5 +1,33 @@
-Version 0.9.9.0.1 Friday 27th January 2006 Darryl Dixon <esrever_otua@users.sourceforge.net>
-- Minor bugfix for Python 1.5.2 compatibility
+Version 0.9.9.5 Thursday 16 June 2005 Darryl Dixon <esrever_otua@users.sourceforge.net>
+- Added socket config option for REUSEADDR in server.py
+- BUGFIX sourceforge ID#1221292 fix regression in CONNECT code that broke SSL
+
+Version 0.9.9.4 Friday 10th June 2005 Darryl Dixon <esrever_otua@users.sourceforge.net>
+- Minor fixups in ntlmaps.spec for better FHS and ntlmaps.nsi for Uninstaller correctness
+- PATCH sourceforge ID#1214559: Add patch for CONNECT support in Direct mode
+- PATCH sourceforge ID#1206709: Add patch for DIRECT_CONNECT_IF_POSSIBLE in proxy_client.py and config_affairs.py
+- Fix ntlmaps.nsi to reflect changed file locations
+- Fix setup.py to make server.cfg location work properly
+
+Version 0.9.9.3 Thursday 24th February 2005 Darryl Dixon <esrever_otua@users.sourceforge.net>
+- Fix self.monitor with no threadsToKill attribute in server.py
+- Trapped exception in config.py for bogus config file specified with -c
+- Moved all text files except COPYING into docs/
+- Updated ntlmaps.spec for better FHS compliance
+
+Version 0.9.9.2 Wednesday 23rd February 2005 Darryl Dixon <esrever_otua@users.sourceforge.net>
+- Added support for hostnames to FRIENDLY_IPS in server.cfg and config_affairs.py
+- Include some preliminary (alpha) packaging stuff
+- REQUEST sourceforge ID#1143827: Changed logic in config.py to make # work in passwords
+- Add fix for Python 1.5.2 compatability to exception clause in config_affairs.py
+- Fix Host check in self.determine_mode() in proxy_client.py
+
+Version 0.9.9.1 Monday 14th February 2005 Darryl Dixon <esrever_otua@users.sourceforge.net>
+- Added HOSTS_TO_BYPASS_PARENT_PROXY configuration item in server.cfg
+- Added processing of HOSTS_TO_BYPASS_PARENT_PROXY to config_affairs.py
+- Moved www_client.py into proxy_client.py -- hide function names behind abstraction
+- Change program flow in server.py and proxy_client.py to support proxy bypass list
+- Cleaned up User-Agent stuff in server.cfg -- added WinXP SP2 IE6 option and made it the default
 
 Version 0.9.9 Thursday 10th February 2005 Darryl Dixon <esrever_otua@users.sourceforge.net>
 - Re-release 0.9.8.11 as 0.9.9 stable
