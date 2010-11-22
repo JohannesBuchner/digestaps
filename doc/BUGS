@@ -1,3 +1,8 @@
+Digest authentication seems to work with squid-3.1.8. 
+Doesn't seem to work well with squid 3.0.STABLE13.
+More testing and beta-testers needed!
+
+
 There is an issue with APS working as a standalone proxy. It serves requests from
 an http-client one by one and allows persistent connections, then it may receive several
 request in very sort time to one thread, and one of them may be to almost dead banner
