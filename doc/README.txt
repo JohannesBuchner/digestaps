@@ -1,3 +1,11 @@
+README file for 'Digest Authorization Proxy Server'
+
+This project was forked from NTLMAPS, the NTLM Authorization Proxy Server.
+It adds digest authentication. Please do not ask for help on NTLM.
+
+Below is the documentation of NTLMAPS:
+
+
 README file for 'NTLM Authorization Proxy Server'
 
 Please read this file to the end, it contains useful installation
