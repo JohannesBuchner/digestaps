@@ -100,7 +100,10 @@ class AuthProxyServer:
             c = proxy_client.proxy_HTTP_Client(conn, addr, self.config, self.watchUpstream, self.monLock, self.monitor.threadsToKill)
         else:
             c = proxy_client.proxy_HTTP_Client(conn, addr, self.config, self.watchUpstream)
-        thread.start_new_thread(c.run, ())
+        if self.config['DEBUG'].get('NOTHREADS'):
+	        c.run()
+        else:
+        	thread.start_new_thread(c.run, ())
 
     #--------------------------------------------------------------
     def sigHandler(self, signum=None, frame=None):
