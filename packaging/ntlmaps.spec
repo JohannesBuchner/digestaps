@@ -1,91 +1,86 @@
 # ntlmaps.spec
 # Copyright (C) 2004 Darryl Dixon <esrever_otua@pythonhacker.is-a-geek.net>
-# This program may be freely redistributed under the terms of the GNU GPL
+# This program may be freely redistributed under the terms of the GNU GPLv2+
+%{!?python_sitelib: %define python_sitelib %(%{__python} -c "from distutils.sysconfig import get_python_lib; print get_python_lib()")}
 
-%define name ntlmaps
-%define ver 0.9.9.5
-%define rel 1
+Name: ntlmaps
+Version: 1.0
+Release: 1%{?dist}
+Summary: NTLM Authorization Proxy Server
 
-Summary: NTLMAPS is a proxy server that authenticates requests to Microsoft proxies that require NTLM authentication.
-Name: %{name}
-Version: %{ver}
-Release: %{rel}
-License: GPL
 Group: Applications/Internet
+License: GPLv2+
 URL: http://ntlmaps.sourceforge.net
-Vendor: Dmitry Rozmanov, Darryl Dixon, and others
-Source: http://prdownloads.sourceforge.net/%{name}/%{name}-%{version}.tar.gz
-Packager: Darryl Dixon <esrever_otua@pythonhacker.is-a-geek.net>
-BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-buildroot
-BuildRequires: python >= 1.5.2 perl
-Requires: python >= 1.5.2
+Source0:        http://downloads.sourceforge.net/ntlmaps/%{name}-%{version}.tar.bz2
+BuildRoot:      %(mktemp -ud %{_tmppath}/%{name}-%{version}-%{release}-XXXXXX)
+BuildRequires: python-devel >= 1.5.2, dos2unix
+BuildArch: noarch
+Requires(post): chkconfig
+Requires(preun): chkconfig
+# This is for /sbin/service
+Requires(preun): initscripts
 
 %description
-NTLM Authorization Proxy Server (ntlmaps) is a proxy software that allows
-you to authenticate via a Microsoft Proxy Server using the proprietary NTLM
-protocol. NTLMAPS has the ability to behave as a standalone proxy server and
-authenticate HTTP clients at Web servers using the NTLM protocol. It can
-change arbitrary values in your client's request headers so that those
-requests will look like they were created by Microsoft Internet Explorer.  It
-is written in Python 1.5.2.
+NTLM Authorization Proxy Server is a proxy software that allows you to
+authenticate via a Microsoft Proxy Server using the proprietary NTLM
+protocol. Since version 0.9.5 APS has an ability to behave as a
+standalone proxy server and authenticate http clients at web servers
+using NTLM method.
 
 %prep
-
-%setup
+%setup -q
 
 %build
+%{__python} packaging/setup.py build
 
 %install
-if [ -d $RPM_BUILD_ROOT ]; then rm -rf $RPM_BUILD_ROOT; fi
-%define ntlmaps_dir /opt/ntlmaps
-# This can be vastly improved, but it Works For Now!(tm)   ;)
-mkdir -p $RPM_BUILD_ROOT
-mkdir -p $RPM_BUILD_ROOT%{ntlmaps_dir}
-mkdir -p $RPM_BUILD_ROOT%{ntlmaps_dir}/lib
-mkdir -p $RPM_BUILD_ROOT%{ntlmaps_dir}/doc
-mkdir -p $RPM_BUILD_ROOT%{ntlmaps_dir}/packaging
-mkdir -p $RPM_BUILD_ROOT%{_bindir}
-mkdir -p $RPM_BUILD_ROOT%{_sysconfdir}/%{name}
-install --mode=0755 --group=root --owner=root main.py \
-                                              runserver.bat \
-                                              COPYING \
-                                              __init__.py \
-                                              $RPM_BUILD_ROOT%{ntlmaps_dir}
-install --mode=0755 --group=root --owner=root server.cfg \
-                                              $RPM_BUILD_ROOT%{_sysconfdir}/%{name}
-install --mode=0755 --group=root --owner=root lib/* $RPM_BUILD_ROOT%{ntlmaps_dir}/lib
-install --mode=0755 --group=root --owner=root doc/* $RPM_BUILD_ROOT%{ntlmaps_dir}/doc
-install --mode=0755 --group=root --owner=root packaging/* $RPM_BUILD_ROOT%{ntlmaps_dir}/packaging
-# Point the default config directory to /var/opt/ntlmaps:
-perl -pi -e 's&(^conf.*?)__init__.*?(\)\)$)&\1"%{_sysconfdir}/%{name}/"\2&' $RPM_BUILD_ROOT%{ntlmaps_dir}/main.py
-$RPM_BUILD_ROOT%{ntlmaps_dir}/packaging/compile.py $RPM_BUILD_ROOT%{ntlmaps_dir}
-$RPM_BUILD_ROOT%{ntlmaps_dir}/packaging/compile.py $RPM_BUILD_ROOT%{ntlmaps_dir}/lib
-ln -s $PYTHON_SITE%{ntlmaps_dir}/main.py $RPM_BUILD_ROOT%{_bindir}/ntlmaps
-#mkdir -p $RPM_BUILD_ROOT%{_mandir}/man1
-#install --mode=0644 --group=root --owner=root ntlmaps.1 $RPM_BUILD_ROOT%{_mandir}/man1
-#gzip $RPM_BUILD_ROOT%{_mandir}/man1/ntlmaps.1
+rm -rf $RPM_BUILD_ROOT
+%{__python} packaging/setup.py install -O1 --skip-build --root $RPM_BUILD_ROOT
+dos2unix COPYING doc/*
 
 %clean
-rm -rf %{buildroot}
+rm -rf $RPM_BUILD_ROOT
 
 %files
 %defattr(-,root,root)
-/opt/*
-#%{_libdir}/*
-%{_bindir}/*
-#%{_mandir}/*
-%{_sysconfdir}/*
+%doc COPYING doc/*
+%{python_sitelib}/*
+%dir %{_sysconfdir}/%{name}
+%config(noreplace) %{_sysconfdir}/%{name}/server.cfg
+%{_bindir}/%{name}*
+%{_sysconfdir}/rc.d/init.d/%{name}
+
+%post
+/sbin/chkconfig --add %{name}
+
+%preun
+if [ $1 = 0 ] ; then
+    /sbin/service %{name} stop >/dev/null 2>&1
+    /sbin/chkconfig --del %{name}
+fi
+
 
 %changelog
+* Mon Apr 13 2009 Matt Domsch <mdomsch@fedoraproject.org> - 1.0-1
+- minor cleanups.
+- finally a 1.0 release!
+
+* Tue Oct 21 2008 Matt Domsch <mdomsch@fedoraproject.org> - 0.9.9.8-1
+- cleanup for Fedora packaging
+
+* Tue Jul 05 2005 Darryl Dixon <esrever_otua@pythonhacker.is-a-geek.net>
+  [ntlmaps-0.9.9.6]
+- Mark server.cfg as config file
+
 * Fri Jun 10 2005 Darryl Dixon <esrever_otua@pythonhacker.is-a-geek.net>
   [ntlmaps-0.9.9.4]
-- Move server.cfg to %{_sysconfdir} for better FHS compliance
+- Move server.cfg to %%{_sysconfdir} for better FHS compliance
 
 * Thu Feb 24 2005 Darryl Dixon <esrever_otua@pythonhacker.is-a-geek.net>
   [ntlmaps-0.9.9.3]
 - Update for moved file locations in source dir
-- Use %{ntlmaps_dir}
-- Move server.cfg to %{_localstatedir}%{ntlmaps_dir} (/var/opt/ntlmaps)
+- Use %%{ntlmaps_dir}
+- Move server.cfg to %%{_localstatedir}%{ntlmaps_dir} (/var/opt/ntlmaps)
 
 * Wed Feb 23 2005 Darryl Dixon <esrever_otua@pythonhacker.is-a-geek.net>
   [ntlmaps-0.9.9.2]

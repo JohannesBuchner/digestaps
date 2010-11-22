@@ -50,7 +50,10 @@ def arrange(conf):
     conf['GENERAL']['HOST'] = hostname
     try:
         externalIP = socket.gethostbyname_ex(hostname)[2]
-    except (socket.error): #socket.gaierror in Python 2.x
+    except socket.error: # Python 1.5
+        print "ERROR: Unable to get the IP address of this machine.  This is not a fatal problem, but may cause problems for you using this proxy in some scenarios."
+        externalIP = []
+    except socket.gaierror: # Python 2.x
         print "ERROR: Unable to get the IP address of this machine.  This is not a fatal problem, but may cause problems for you using this proxy in some scenarios."
         externalIP = []
     conf['GENERAL']['HOST_IP_LIST'] = externalIP + ['127.0.0.1']
@@ -87,6 +90,7 @@ def arrange(conf):
         sys.exit(1)
     if not conf['NTLM_AUTH'].has_key('PASSWORD'):
         conf['NTLM_AUTH']['PASSWORD'] = ''
+        conf['NTLM_AUTH']['COMPLEX_PASSWORD_INPUT'] = makeInt(conf['NTLM_AUTH']['COMPLEX_PASSWORD_INPUT'], 'COMPLEX_PASSWORD_INPUT')
 
 
     #-----------------------------------------------

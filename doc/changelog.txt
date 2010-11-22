@@ -1,3 +1,21 @@
+Version 0.9.9.8 Tuesday 21 October 2008 Matt Domsch <matt@domsch.com>
+- apply all patches submitted on the sourceforge site
+- apply some patches carried in Debian
+
+Version 0.9.9.0.1 Friday 27th January 2006 Darryl Dixon <esrever_otua@users.sourceforge.net>
+- Minor bugfix for Python 1.5.2 compatibility
+
+Version 0.9.9.7 Wednesday 20 July 2005 Darryl Dixon <esrever_otua@users.sourceforge.net>
+- Squash infinite poll loop failure in pipelined requests
+- Add support for complex passwords input at runtime on Windows hosts (via win32console module)
+- Fixup py1.5.2 compatability in can_connect()
+- Squash 100% CPU Bug
+
+Version 0.9.9.6 Tuesday 05 July 2005 Darryl Dixon <esrever_otua@users.sourceforge.net>
+- Squash bug introduced in 0.9.9.5 preventing mode change to www in proxy_client.py
+- Mark server.cfg as config file in ntlmaps.spec
+- Update copyright string
+
 Version 0.9.9.5 Thursday 16 June 2005 Darryl Dixon <esrever_otua@users.sourceforge.net>
 - Added socket config option for REUSEADDR in server.py
 - BUGFIX sourceforge ID#1221292 fix regression in CONNECT code that broke SSL

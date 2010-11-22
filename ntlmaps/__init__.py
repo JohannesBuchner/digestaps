@@ -1,5 +1,3 @@
-#!/usr/bin/python
-
 # This file is Copyright 2004 Darryl A. Dixon <esrever_otua@pythonhacker.is-a-geek.net>
 # and is part of 'NTLM Authorization Proxy Server',
 # Copyright 2001 Dmitry A. Rozmanov <dima@xenon.spb.ru>
@@ -19,11 +17,5 @@
 # Free Software Foundation, Inc.,
 # 59 Temple Place, Suite 330, Boston, MA 02111-1307, USA.
 #
-
-import os, sys
-
-ntlmaps_dir = os.path.dirname(os.path.abspath(__file__))
-ntlmaps_libdir = ntlmaps_dir + '/lib'
-sys.path.append(ntlmaps_libdir)
-
-del os, sys
+from ntlmaps import config, config_affairs, server
+all = ('config', 'config_affairs', 'server')

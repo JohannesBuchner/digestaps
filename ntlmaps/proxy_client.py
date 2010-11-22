@@ -39,7 +39,6 @@ class proxy_HTTP_Client:
         self.basic_auther = basic_auth.basic_auther()
         self.digest_auther = digest_auth.digest_auther()
         # experimental code end
-        self.mode_undecided = 1
         self.proxy_authorization_tried = 0
         self.www_authorization_tried = 0
         self.tunnel_mode = 0
@@ -261,13 +260,11 @@ class proxy_HTTP_Client:
             if self.client_head_obj:
                 self.logger.log("*** Got client request header.\n")
                 self.client_buffer = rest
-                if self.mode_undecided:
-                    self.determine_mode()
-                    self.mode_undecided = 0
                 self.logger.log('*** Client header:\n=====\n' + self.client_head_obj.__repr__())
                 self.guess_client_data_length()
 
                 # mask real values and do transforms
+                self.determine_mode()
                 self.fix_client_header()
 
         self.check_client_data_length()
@@ -305,6 +302,7 @@ class proxy_HTTP_Client:
                 if self.rserver_all_got:
                     self.rserver_data_sent = 1
                     self.logger.log('*** Sent ALL the data from remote server to client. (Server buffer - %d bytes)\n' % len(self.rserver_buffer))
+                    self.client_socket.flush()
             except:
                 self.logger.log('*** Exception by sending data to client. Client closed connection.\n')
                 self.client_socket_closed = 1
@@ -312,8 +310,24 @@ class proxy_HTTP_Client:
             self.logger.log("*** No server's data to send to the client. (server's buffer - %d bytes)\n" % len(self.rserver_buffer))
     #-----------------------------------------------------------------------
     def proxy_send_client_header(self):
-        self.logger.log('*** Sending client request header to remote server...')
-        ok = self.client_head_obj.send(self.rserver_socket)
+        ok = 0
+    
+        if self.config['NTLM_AUTH']['NTLM_TO_BASIC'] and self.client_head_obj.has_param('Proxy-Authorization'):
+            # Assuming Proxy-Authorization parameter contains Basic credentials.
+            # Masking it out, because of unsafety and unnecessarity.
+        
+            proxy_authorization_values = self.client_head_obj.get_param_values('Proxy-Authorization')
+            self.client_head_obj.del_param('Proxy-Authorization')
+        
+            self.logger.log('*** Sending client request header without Proxy-Authorization parameter to remote server...')
+            ok = self.client_head_obj.send(self.rserver_socket)
+        
+            for value in proxy_authorization_values:
+                self.client_head_obj.add_param_value('Proxy-Authorization', value)
+        else:
+            self.logger.log('*** Sending client request header to remote server...')
+            ok = self.client_head_obj.send(self.rserver_socket)
+
         if ok:
             self.client_header_sent = 1
             self.logger.log('Done.\n')
@@ -811,17 +825,12 @@ class proxy_HTTP_Client:
     def determine_mode(self):
         if self.config['GENERAL']['PARENT_PROXY']:
             if self.config['GENERAL']['HOSTS_TO_BYPASS_PARENT_PROXY'] or self.config['GENERAL']['DIRECT_CONNECT_IF_POSSIBLE']:
-                try:
-                    if self.config['GENERAL']['PARENT_SKIP_FOR_INTERNAL'] and self.can_connect():
-                        self.move_to_www_mode()
-                    else:
-                        host = self.client_head_obj.get_param_values('Host')
-                        if host:
-                            if host[0] in self.config['GENERAL']['HOSTS_TO_BYPASS_PARENT_PROXY']:
-                                self.move_to_www_mode()
-                            else:
-                                self.move_to_proxy_mode()
-                except KeyError:
+                rs, rsp = self.client_head_obj.get_http_server()
+                if rs in self.config['GENERAL']['HOSTS_TO_BYPASS_PARENT_PROXY']:
+                    self.move_to_www_mode()
+                elif self.config['GENERAL']['DIRECT_CONNECT_IF_POSSIBLE'] and self.can_connect(rs, rsp):
+                    self.move_to_www_mode()
+                else:
                     self.move_to_proxy_mode()
             else:
                 self.move_to_proxy_mode()
@@ -830,15 +839,12 @@ class proxy_HTTP_Client:
         return
 
     #-----------------------------------------------------------------------
-    def can_connect(self):
-        try:
-            s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            rs, rsp = self.client_head_obj.get_http_server()
-            s.connect((rs, rsp))
-            s.close()
-            return True
-        except:
-            return False
+    def can_connect(self, rs, rsp):
+        s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        # Returns 0 for success, >0 for failure:
+        res = s.connect_ex((rs, rsp))
+        s.close()
+        return not res
 
     #-----------------------------------------------------------------------
     def move_to_proxy_mode(self):

@@ -1,0 +1,13 @@
+#!/usr/bin/python
+
+import os, sys, base64
+# to allow running from source distribution
+sys.path = list((os.getcwd(),)) + sys.path
+from ntlmaps import ntlm_procs
+
+if len(sys.argv) < 2:
+    print "usage: ntlmaps-hashes yourpassword"
+    sys.exit(1)
+
+print "Set LM_HASHED_PW to " + base64.encodestring(ntlm_procs.create_LM_hashed_password(sys.argv[1:][0]))
+print "Set NT_HASHED_PW to " + base64.encodestring(ntlm_procs.create_NT_hashed_password(sys.argv[1:][0]))

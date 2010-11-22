@@ -3,7 +3,7 @@ INSTALLATION
 
 1. Edit server.cfg to match your preferences
 
-2. Run the main.py script.
+2. Run the ntlmaps script.
 
 
    Windows:
@@ -12,11 +12,11 @@ INSTALLATION
 
    Unix:
    ---------
-   /path/to/main.py &
+   /path/to/scripts/ntlmaps &
 
    or
 
-   python /path/to/main.py
+   python /path/to/scripts/ntlmaps
 
 3. Try it! Go to your browser and set 127.0.0.1 at port 5865 as
    your HTTP/FTP proxy server. 5865 is the default port, if you have not

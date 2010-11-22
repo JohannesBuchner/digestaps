@@ -20,7 +20,7 @@
 
 ; HM NIS Edit Wizard helper defines
 !define PRODUCT_NAME "ntlmaps"
-!define PRODUCT_VERSION "0.9.9.5"
+!define PRODUCT_VERSION "1.0"
 !define PRODUCT_PUBLISHER "MZ"
 !define PRODUCT_UNINST_KEY "Software\Microsoft\Windows\CurrentVersion\Uninstall\${PRODUCT_NAME}"
 !define PRODUCT_UNINST_ROOT_KEY "HKLM"
@@ -55,13 +55,15 @@ Section "MainSection" SEC01
   
   File "..\dist\bz2.pyd"
   File "..\dist\library.zip"
-  File /oname="${PRODUCT_NAME}.exe" "..\dist\main.exe" 
-  File "..\dist\python24.dll"
+  File "..\dist\ntlmaps.exe" 
+  File "..\dist\ntlmaps-hashes.exe"
+  File "..\dist\python25.dll"
+  File "..\dist\pywintypes25.dll"
   File "..\dist\select.pyd"
   File "..\dist\server.cfg"
   File "..\dist\unicodedata.pyd"
   File "..\dist\w9xpopen.exe"
-  File "..\dist\zlib.pyd"
+  File "..\dist\win32console.pyd"
   File "..\dist\_socket.pyd"
   File "..\dist\_ssl.pyd"
 SectionEnd
