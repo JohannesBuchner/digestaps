@@ -18,7 +18,7 @@
 #
 
 import string, socket, thread, select, time
-import logger, http_header, utils, ntlm_auth, basic_auth
+import logger, http_header, utils, ntlm_auth, basic_auth, digest_auth
 
 class proxy_HTTP_Client:
 
@@ -37,6 +37,7 @@ class proxy_HTTP_Client:
         self.ntlm_auther = ntlm_auth.ntlm_auther()
         # experimental code
         self.basic_auther = basic_auth.basic_auther()
+        self.digest_auther = digest_auth.digest_auther()
         # experimental code end
         self.mode_undecided = 1
         self.proxy_authorization_tried = 0
@@ -592,11 +593,11 @@ class proxy_HTTP_Client:
     #-----------------------------------------------------------------------
     def auth_407(self):
         auth = self.rserver_head_obj.get_param_values('Proxy-Authenticate')
-        upper_auth = []
+        upper_auth = ""
         msg = ''
         for i in auth:
             msg = msg + ", %s" % i
-            upper_auth.append(string.upper(i))
+            upper_auth += (string.upper(i))
         self.logger.log('*** Authentication methods allowed: ' + msg[2:] + '\n')
 
         # NOTE that failed auth is detected now just after any failed atempt.
@@ -618,6 +619,11 @@ class proxy_HTTP_Client:
                 self.logger.log('*** Using Basic authentication method.\n')
                 #self.basic_authorization()
                 self.basic_auther.proxy_basic_authentication(self)
+
+            elif 'DIGEST' in upper_auth:
+                self.logger.log('*** Using Digest authentication method.\n')
+                #self.basic_authorization()
+                self.digest_auther.proxy_digest_authentication(self)
 
             else:
                 self.logger.log('*** There are no supported authentication methods in remote server response.\n')
