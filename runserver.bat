@@ -1,2 +1,2 @@
 @echo off
-"c:\program files\python\python.exe" main.py
+"c:\program files\python\python.exe" scripts/ntlmaps

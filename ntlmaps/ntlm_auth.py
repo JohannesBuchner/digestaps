@@ -64,7 +64,7 @@ class ntlm_auther:
         # If we are POST/PUT-ing a large chunk of data we don't want
         # to do this at this time, so we change the data to 'abc' with
         # lenght = 3.
-        if connection.client_head_obj.get_http_method() in ('POST', 'PUT'):
+        if connection.client_head_obj.has_param('Content-Length'):
             tmp_client_head_obj.replace_param_value('Content-Length', '3')
 
         connection.logger.log('*** Fake NTLM header with Msg1:\n=====\n' + tmp_client_head_obj.__repr__())
@@ -72,7 +72,8 @@ class ntlm_auther:
         tmp_client_head_obj.send(connection.rserver_socket)
         connection.logger.log('Done.\n')
 
-        if connection.client_head_obj.get_http_method() in ('POST', 'PUT'):
+        if connection.client_head_obj.has_param('Content-Length'):
+
             try:
                 connection.logger.log("*** Sending fake 'abc' bytes body...")
                 connection.rserver_socket.send('abc')
@@ -160,14 +161,14 @@ class ntlm_auther:
         # If we are POST/PUT-ing a large chunk of data we don't want
         # to do this at this time, so we change the data to 'abc' with
         # lenght = 3.
-        if connection.client_head_obj.get_http_method() in ('POST', 'PUT'):
+        if connection.client_head_obj.has_param('Content-Length'):
             tmp_client_head_obj.replace_param_value('Content-Length', '3')
 
         connection.logger.log('*** Fake NTLM header with Msg1:\n=====\n' + tmp_client_head_obj.__repr__())
         connection.logger.log('*** Sending Fake NTLM header (and body) with Msg1...')
         tmp_client_head_obj.send(connection.rserver_socket)
 
-        if connection.client_head_obj.get_http_method() in ('POST', 'PUT'):
+        if connection.client_head_obj.has_param('Content-Length'):
             try:
                 connection.rserver_socket.send('abc')
             except:
@@ -313,7 +314,12 @@ class ntlm_auther:
         user, password = self.get_credentials_from_basic(connection, error_code)
         if user:
             connection.logger.log("*** Found Basic credentials in client's header.\n")
-            environment['USER'] = user
+            
+            if environment['UNICODE']:
+                environment['USER'] = utils.str2unicode(string.upper(user))
+            else:
+                environment['USER'] = string.upper(user)
+
             #environment['PASSWORD'] = password
             connection.logger.log("*** Basic User/Password: %s/%s.\n" % (user, password))
 

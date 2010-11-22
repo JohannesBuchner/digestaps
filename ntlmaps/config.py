@@ -35,19 +35,35 @@ def read_config(fname):
                 else:
                     parts = string.split(workingLine, ':')
                     if len(parts) > 1:
-                        res[section_name][string.strip(parts[0])] = string.strip(parts[1])
+                        res[section_name][string.strip(parts[0])] = string.strip(string.join(parts[1:], ':'))
     return res
 
 #-------------------------------------------------------------------------------------------
 # Thanks Janek Schwarz <j.schwarz@i-change.de> for this addition.
 
-def findConfigFileNameInArgv(argv, configFileDir=''):
+def findConfigFileNameInArgv(argv):
     """ Resolves configuration file. Resolution goes as follows:
     if the command switch '-c' is given its argument is taken as
     the config file. Otherwise the function falls back to
-    'server.cfg' in the current directory. """
+    the value of the NTLMAPS_CONF environment variable,
+    'server.cfg', in the current directory,
+    '$HOME/.ntlmaps.conf', 
+    and finally /etc/ntlmaps/server.cfg, in order. """
 
-    configFileName = configFileDir+'server.cfg'
+    try:
+        home=os.path.join(os.getenv('HOME'), '.ntlmaps.conf')
+    except:
+        home=None
+
+    possible_paths = (
+        os.getenv('NTLMAPS_CONF'),
+        os.path.join(os.getcwd(), 'server.cfg'),
+        home,
+        '/etc/ntlmaps/server.cfg'
+        )
+                       
+
+    configFileName = None
 
     optionsList, notUsedArguments = getopt.getopt(argv[1:], 'c:')
 
@@ -62,5 +78,18 @@ def findConfigFileNameInArgv(argv, configFileDir=''):
             except IOError:
                 print "ERROR: Config file specified with '-c' either does not exist or is not readable."
                 sys.exit(1)
+
+    if configFileName is None:
+        for p in possible_paths:
+            if p is not None:
+                if os.path.exists(p):
+                    configFileName = p
+                    break
+
+    if configFileName is None:
+        sys.stderr.write('Unable to find a config file.\n')
+        sys.exit(1)
+    print "Using config file %s" % configFileName
+
 
     return configFileName

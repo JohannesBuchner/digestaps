@@ -1,23 +1,10 @@
-README file for 'NTLM Authorization Proxy Server' v0.9.9.4
-
-Release Purpose:
-----------------
-Mainly feature enhancements. See changelog.txt for full description.
-
-There is an issue with APS working as a standalone proxy. It serves requests from
-an http-client one by one and allows persistent connections, then it may receive several
-request in very sort time to one thread, and one of them may be to almost dead banner
-site, then all the requests made after that one will be waiting till that "bad" connection
-will be closed due to timeout. So I suggest switching off HTTP/1.1 presistent connections
-in your browser when you are using APS for web (not proxy) authentication and surfing
-banner rich evironment.
-
-This is a beta version, so I expect it to have bugs. If something goes
-wrong, please log a support request on the sourceforge.net project page.
+README file for 'NTLM Authorization Proxy Server'
 
 Please read this file to the end, it contains useful installation
 instructions and other information.
 
+If something goes wrong, please log a support request on the
+sourceforge.net project page.
 
 1. WHAT IS 'NTLM Authorization Proxy Server'?
 ---------------------------------------------
@@ -83,8 +70,11 @@ Therefore you may have problems with later Pythons, but I hope you will not.
 5. LICENSING & PRICING
 ----------------------
 
-'NTLM Authorization Proxy Server' is distributed under the GNU Public License,
-which is included in this archive (see file COPYING).
+'NTLM Authorization Proxy Server' is distributed under the GNU General
+Public License; either version 2 of the License which is included in
+this archive (see file COPYING), or (at your option) any later
+version.
+
 
 The above mean that 'NTLM Authorization Proxy Server' is pretty much free.
 You have to pay nothing for it.

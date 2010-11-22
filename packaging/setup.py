@@ -22,46 +22,29 @@
 #
 # setup.py
 from distutils.core import setup
-import py2exe
-import sys
-import re
-sys.argv.append("py2exe")
+import sys, re, string, os
 
-# Hmmmmmm.
-repline = re.compile("(?P<before>^conf.*?)__init__.*?(?P<after>\)\)$)", re.M|re.S)
-fileh = open('main.py', 'r')
-code = fileh.read()
-fileh.close()
-newcode = re.sub(repline, re.search(repline, code).group('before')+"'./'"+re.search(repline, code).group('after'), code)
-fileh = open('main.py', 'w')
-fileh.write(newcode)
-fileh.close()
+try:
+    import py2exe 
+    sys.argv.append("py2exe")
+    use_py2exe=True
+except:
+    use_py2exe=False
+
+
+if use_py2exe:
+    serverCfgDir=''
+else:
+    serverCfgDir='/etc/ntlmaps'
 
 setup(name='ntlmaps',
-    version='0.9.9.5',
-    console=["main.py"],
-    package_dir = {'': 'lib'},
-    options = {"py2exe": {"packages": ["encodings"]}},
-    py_modules = ['basic_auth',
-        'config',
-        'config_affairs',
-        'des',
-        'des_c',
-        'des_data',
-        'http_header',
-        'logger',
-        'md4',
-        'monitor_upstream',
-        'ntlm_auth',
-        'ntlm_messages',
-        'ntlm_procs',
-        'proxy_client',
-        'server',
-        'U32',
-        'utils'],
-    data_files=[("",["server.cfg"]),],
-    description='NTLM local Proxy',
-    author='Dmitry A. Rozmanov',
-    author_email='<dima@xenon.spb.ru',
-    url='http://ntlmaps.sourceforge.net/',
-    )
+      version='1.0',
+      description='NTLM Authorization Proxy Server',
+      url='http://ntlmaps.sourceforge.net/',
+      packages=['ntlmaps'],
+      scripts=['scripts/ntlmaps', 'scripts/ntlmaps-hashes'],
+      data_files=[(serverCfgDir, ['server.cfg']),
+                  ('/etc/rc.d/init.d', ['init/ntlmaps'])],
+      options = {"py2exe": {"packages": ["encodings", "win32console"],
+                            "optimize": 2}},
+      )
