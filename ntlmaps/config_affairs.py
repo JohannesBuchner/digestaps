@@ -98,6 +98,7 @@ def arrange(conf):
     conf['DEBUG']['DEBUG'] = makeInt(conf['DEBUG']['DEBUG'], 'DEBUG')
     conf['DEBUG']['AUTH_DEBUG'] = makeInt(conf['DEBUG']['AUTH_DEBUG'], 'AUTH_DEBUG')
     conf['DEBUG']['BIN_DEBUG'] = makeInt(conf['DEBUG']['BIN_DEBUG'], 'BIN_DEBUG')
+    conf['DEBUG']['NOTHREADS'] = makeInt(conf['DEBUG']['NOTHREADS'], 'NOTHREADS')
 
     # screen activity
     if conf['DEBUG'].has_key('SCR_DEBUG'):
